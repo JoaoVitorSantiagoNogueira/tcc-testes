@@ -34,7 +34,8 @@ val_data_loader = DataLoader(dataset=val_set, num_workers=0, batch_size=1, shuff
 checkpoint = torch.load(opt.model)
 netG = InpaintGenerator()
 netG.load_state_dict(checkpoint['generator'])
-netG.cuda()
+if opt.cuda:
+    netG.cuda()
 
 transform_list = [transforms.ToTensor(),
                   transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
@@ -46,6 +47,7 @@ counter = 0
 with torch.no_grad():
     for batch in val_data_loader:
         input, target, prev_frame = Variable(batch[0], volatile=True), Variable(batch[1], volatile=True), Variable(batch[2], volatile=True)
+        prev_frame = prev_frame.type(torch.FloatTensor)
         if opt.cuda:
             input = input.cuda()
             target = target.cuda()
@@ -53,8 +55,10 @@ with torch.no_grad():
         if counter != 0:
             prev_frame = tmp
             print("success")
-        pred_input = torch.cat((input,prev_frame),1)
-        out = netG(pred_input)
+            pred_input = torch.cat((input,prev_frame),1)
+            out = netG(pred_input)
+        else:
+            out = target.to(dtype = torch.float32)
         tmp = out
         
         if not os.path.exists(os.path.join("result", opt.dataset)):

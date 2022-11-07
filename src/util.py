@@ -1,4 +1,5 @@
 from ctypes import resize
+from math import ceil, floor
 import numpy as np
 import os
 import sys
@@ -13,8 +14,22 @@ def is_image_file(filename):
     return any(filename.endswith(extension) for extension in [".png", ".jpg", ".jpeg"])
 
 
-def load_img(filepath):
+def load_img(filepath, bbox = (0,0,1,1)):
     img = imread(filepath)
+    bbox_top   = bbox[0]
+    bbox_left  = bbox[1]
+    bbox_bot   = bbox[2]
+    bbox_right = bbox[3]
+
+    width, height, channels = img.shape
+
+    left  =  floor(bbox_left*width)
+    right =  ceil (bbox_right*width)
+    top   =  floor(bbox_top*height)
+    bot   =  ceil (bbox_bot*height)
+
+    img = img[left:right,top:bot]
+
     img = imresize(img,(256,256))
     return img
 

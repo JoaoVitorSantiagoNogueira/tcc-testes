@@ -1,5 +1,6 @@
 from __future__ import print_function
 import argparse
+from cgi import test
 import os
 import numpy as np
 from math import log10
@@ -17,6 +18,7 @@ from src.dataset import DatasetFromFolder
 from src.loss import AdversarialLoss, StyleLoss, PerceptualLoss
 import torch.backends.cudnn as cudnn
 import torchvision.transforms as transforms
+import random
 
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
@@ -43,6 +45,7 @@ parser.add_argument('--L1lamb', type=int, default=10, help='weight on L1 term in
 parser.add_argument('--Stylelamb', type=int, default=1000, help='weight on Style term in objective')
 parser.add_argument('--Contentlamb', type=int, default=1, help='weight on Content term in objective')
 parser.add_argument('--Adversariallamb', type=int, default=0.1, help='weight on Adv term in objective')
+parser.add_argument('--RandomArea', action='store_false', help='train with a random area?')
 opt = parser.parse_args()
 
 print(opt)
@@ -61,8 +64,8 @@ root_path = opt.root
 train_set = get_training_set(join(root_path , opt.dataset))
 test_set = get_test_set(join(root_path , opt.dataset))
 
-training_data_loader = DataLoader(dataset=train_set, num_workers=opt.threads, batch_size=opt.batchSize, shuffle=True)
-testing_data_loader = DataLoader(dataset=test_set, num_workers=opt.threads, batch_size=opt.testBatchSize, shuffle=False)
+training_data_loader = DataLoader(dataset=train_set, num_workers=opt.threads, batch_size=opt.batchSize, shuffle=False)
+#testing_data_loader = DataLoader(dataset=test_set, num_workers=opt.threads, batch_size=opt.testBatchSize, shuffle=False)
 
 sample_iterator = create_iterator(6, test_set)
 
@@ -117,12 +120,32 @@ prev_b = Variable(prev_b)
 
 def train(epoch):
 
+
+
+    #define random boundaries for our epoch, and make a data loader for it
+    if (opt.RandomArea):
+        left  = random.uniform (0,1)
+        top   = random.uniform (0,1)
+        right = random.uniform (left,1)
+        bot   = random.uniform (top,1)
+    else:
+        left  = 0
+        right = 1
+        top   = 0
+        bot   = 1
+
+    train_set.set_region(bbox= (top, left, bot, right))
+
+    #don't shuffle!! images are ordered in scenes, the scenes are already shuffled elsewhere
+    training_data_loader = DataLoader(dataset=train_set, num_workers=opt.threads, batch_size=opt.batchSize, shuffle=False)
+
     for iteration, batch in enumerate(training_data_loader, 1):
         # forward
         real_a_cpu, real_b_cpu, prev_b_cpu = batch[0], batch[1], batch[2]
-        real_a.data.resize_(real_a_cpu.size()).copy_(real_a_cpu)
-        real_b.data.resize_(real_b_cpu.size()).copy_(real_b_cpu)
-        prev_b.data.resize_(prev_b_cpu.size()).copy_(prev_b_cpu)
+        with torch.no_grad():
+            real_a.resize_(real_a_cpu.size()).copy_(real_a_cpu)
+            real_b.resize_(real_b_cpu.size()).copy_(real_b_cpu)
+            prev_b.resize_(prev_b_cpu.size()).copy_(prev_b_cpu)
 
         input_joined = torch.cat((real_a,prev_b),1)
 
