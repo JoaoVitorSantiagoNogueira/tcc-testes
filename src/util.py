@@ -5,6 +5,7 @@ import os
 import sys
 import time
 from PIL import Image
+import torch
 
  ### changed imread and imresize from scipy.misc because it was deprecated
 from skimage.transform import resize as imresize
@@ -28,7 +29,7 @@ def load_img(filepath, bbox = (0,0,1,1)):
     top   =  floor(bbox_top*height)
     bot   =  ceil (bbox_bot*height)
 
-    img = img[left:right,top:bot]
+    #img = img[left:right,top:bot]
 
     img = imresize(img,(256,256))
     return img
@@ -53,7 +54,7 @@ def stitch_images(inputs, *outputs, img_per_row=2):
     columns = len(outputs) + 1
 
     width, height = inputs[0][:, :, 0].shape
-    img = Image.new('RGB', (width * img_per_row * columns + gap * (img_per_row - 1), height * int(len(inputs) / img_per_row)))
+    img = Image.new('RGB', (width * img_per_row * columns + gap * (img_per_row - 1), height * ceil(len(inputs) / img_per_row)))
     images = [inputs, *outputs]
 
     for ix in range(len(inputs)):
@@ -232,4 +233,6 @@ def load(checkpoint_path_G, checkpoint_path_D, netG, netD):
     checkpoint_D = torch.load(checkpoint_path_D)  
     netG.load_state_dict(checkpoint_G['generator'])
     netD.load_state_dict(checkpoint_D['discriminator'])
-    return netG, netD, optimizerG, optimizerD
+    return netG, netD
+    #return netG, netD, optimizerG, optimizerD
+    #optimizers were not beeing loaded externaly, and we don't need to initialize it from a file

@@ -21,6 +21,7 @@ parser.add_argument('--root', required=True, help='root path')
 parser.add_argument('--dataset', required=True, help='facades')
 parser.add_argument('--model', type=str, default='checkpoint/facades/netG_model_epoch_200.pth', help='model file to use')
 parser.add_argument('--cuda', action='store_true', help='use cuda')
+parser.add_argument('--resultPair', action='store_true', help='print results as a pair or real and generated image')
 opt = parser.parse_args()
 print(opt)
 
@@ -61,11 +62,17 @@ with torch.no_grad():
             out = target.to(dtype = torch.float32)
         tmp = out
         
+
+        if(opt.resultPair):
+            out= torch.cat((out,target),3)
+
         if not os.path.exists(os.path.join("result", opt.dataset)):
             os.makedirs(os.path.join("result", opt.dataset))
        
-        image_name = opt.dataset + "_" + str(counter).zfill(5) + ".jpg"
+        image_name = opt.dataset + "_" + str(counter).zfill(5) + ".png"
         save_image(out,"result/{}/{}".format(opt.dataset, image_name))
         print("saving:"+image_name)
         
         counter += 1
+
+        

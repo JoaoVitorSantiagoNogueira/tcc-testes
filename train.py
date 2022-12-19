@@ -6,6 +6,7 @@ import numpy as np
 from math import log10
 from os.path import join
 from PIL import Image
+from sympy import false
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -21,7 +22,13 @@ import torchvision.transforms as transforms
 import random
 
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+## weights and biasses login
+##import wandb
+##wandb.init(project="frame-coloring-gan-by-first")
+##
+##
+
+os.environ['CUDA_VISIBLE_DEVICES'] = "0,1"
 
 
 # Training settings
@@ -45,7 +52,7 @@ parser.add_argument('--L1lamb', type=int, default=10, help='weight on L1 term in
 parser.add_argument('--Stylelamb', type=int, default=1000, help='weight on Style term in objective')
 parser.add_argument('--Contentlamb', type=int, default=1, help='weight on Content term in objective')
 parser.add_argument('--Adversariallamb', type=int, default=0.1, help='weight on Adv term in objective')
-parser.add_argument('--RandomArea', action='store_false', help='train with a random area?')
+parser.add_argument('--RandomArea', action='store_true', help='train with a random area?')
 opt = parser.parse_args()
 
 print(opt)
@@ -67,7 +74,8 @@ test_set = get_test_set(join(root_path , opt.dataset))
 training_data_loader = DataLoader(dataset=train_set, num_workers=opt.threads, batch_size=opt.batchSize, shuffle=False)
 #testing_data_loader = DataLoader(dataset=test_set, num_workers=opt.threads, batch_size=opt.testBatchSize, shuffle=False)
 
-sample_iterator = create_iterator(6, test_set)
+#altered to use batchSize
+sample_iterator = create_iterator(opt.batchSize, test_set)
 
 print('===> Building model')
 
@@ -80,8 +88,12 @@ if (opt.cuda):
 netG = define_G(opt.input_nc, opt.output_nc, "opt.ngf", False, gpu_id)
 netD = define_D(opt.input_nc + opt.output_nc, "opt.ndf", False, gpu_id)
 
+##wandb.watch(netG)
+##wandb.watch(netD)
+
+
 if opt.checkpoint_path_G and opt.checkpoint_path_D:
-    load(opt.checkpoint_path_G, opt.checkpoint_path_D, netG, netD)
+    netG, netG, load(opt.checkpoint_path_G, opt.checkpoint_path_D, netG, netD)
 
 criterionGAN = AdversarialLoss()
 criterionSTYLE = StyleLoss()
@@ -140,6 +152,7 @@ def train(epoch):
     training_data_loader = DataLoader(dataset=train_set, num_workers=opt.threads, batch_size=opt.batchSize, shuffle=False)
 
     for iteration, batch in enumerate(training_data_loader, 1):
+
         # forward
         real_a_cpu, real_b_cpu, prev_b_cpu = batch[0], batch[1], batch[2]
         with torch.no_grad():
@@ -216,7 +229,6 @@ def sample(iteration):
     with torch.no_grad():
 
         input,target,prev_frame = next(sample_iterator)
-        
         if opt.cuda:
             input = input.cuda()
             target = target.cuda()

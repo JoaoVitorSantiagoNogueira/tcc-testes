@@ -1,3 +1,4 @@
+from numpy import dtype
 import torch
 import torch.nn as nn
 
@@ -64,16 +65,31 @@ class InpaintGenerator(BaseNetwork):
         self.middle = nn.Sequential(*blocks)
 
         self.decoder = nn.Sequential(
-            nn.ConvTranspose2d(in_channels=256, out_channels=128, kernel_size=4, stride=2, padding=1),
+            # [batch_size, 256, 64, 64]
+            #nn.ConvTranspose2d(in_channels=256, out_channels=128, kernel_size=4, stride=2, padding=1),
+            #changes to avoid chckered patterns, parameters chosen to keep the same dimensions
+            nn.Upsample(scale_factor= 4, mode='bilinear'),
+            nn.ReflectionPad2d(1),
+            nn.Conv2d(in_channels=256, out_channels=128, kernel_size=4, stride=2, padding=0),
+            # [batch_size, 128, 128, 128]
+
+
             nn.InstanceNorm2d(128, track_running_stats=False),
             nn.ReLU(True),
+            #nn.ConvTranspose2d(in_channels=128, out_channels=64, kernel_size=4, stride=2, padding=1),
+            nn.Upsample(scale_factor= 4, mode='bilinear'),
+            nn.ReflectionPad2d(1),
+            nn.Conv2d(in_channels=128, out_channels=64, kernel_size=4, stride=2, padding=0),
+            # [batch_size, 64, 256, 256]
 
-            nn.ConvTranspose2d(in_channels=128, out_channels=64, kernel_size=4, stride=2, padding=1),
+    
             nn.InstanceNorm2d(64, track_running_stats=False),
             nn.ReLU(True),
 
             nn.ReflectionPad2d(3),
+            # [batch_size, 64, 262, 262]
             nn.Conv2d(in_channels=64, out_channels=3, kernel_size=7, padding=0),
+            # [batch_size, 3, 256, 256]
         )
 
         if init_weights:

@@ -2,12 +2,14 @@ from genericpath import isdir
 from os import listdir, walk
 from os.path import join, exists
 from PIL import Image
-from matplotlib.transforms import Bbox
+from matplotlib.pyplot import pause
 import numpy as np
 import torch
 import torch.utils.data as data
 import torchvision.transforms as transforms
 import random
+
+import PIL
 
 from skimage import io, feature, color, img_as_uint, util
 from skimage.transform import resize
@@ -32,10 +34,8 @@ class DatasetFromFolder(data.Dataset):
         self.image_filenames_tests = [[y + x for x in listdir(y) if is_image_file(x)] for y in self.scenes]
         self.shuffled_scenes = []
         self.next_scene()
-        
-        #print(self.shuffled_scenes)
-
-        transform_list = [transforms.ToTensor()]
+        transform_list = [transforms.ToTensor(),transforms.ConvertImageDtype(torch.float32)]
+        #transform_list = [transforms.ToTensor()]
         self.transform = transforms.Compose(transform_list)
         
 
@@ -49,11 +49,13 @@ class DatasetFromFolder(data.Dataset):
             #index is sequential, but the data set is not, so we have to decrement it after every scene
             if index_corrected >= len(self.current_scene) or index_corrected < 0:
                 self.next_scene()
+                #make sure it's updated
+                index_corrected = index - self.frame_sum
 
             ## we need to add the scene name to path as well
 
 
-            target_path = join(self.photo_path, self.current_scene[index - self.frame_sum])
+            target_path = join(self.photo_path, self.current_scene[index_corrected])
 
             frame_num = target_path.split("e")[-1]
             frame_num = int(frame_num.split(".")[0]) - 1
@@ -61,12 +63,16 @@ class DatasetFromFolder(data.Dataset):
             ### get first frame from scene
             frame_prev = self.prev
 
-            ### add box parameters ççç
             target = load_img(target_path, bbox = self.bbox)
             #target = load_img(target_path)
 
-
-
+            '''
+            from matplotlib import pyplot as plt
+            plt.imshow(target, interpolation='nearest')
+            plt.show()
+            pause()
+            '''
+            #cv2.imshow(frame_prev)
 
             #çççç TODO change image representation, don't want to deal with real time cnversions nor file system
             input = color.rgb2gray(target)
@@ -91,24 +97,24 @@ class DatasetFromFolder(data.Dataset):
             return self[0]
 
     def __len__(self):
-        #return len(self.image_filenames)
-        print
         return sum([len(x) for x in self.image_filenames_tests])
 
-    def get_prev(self, num):
-        if not exists(join(self.photo_path,"frame"+str(num)+".jpg")):
-            initial_prev_frame = Image.new("RGB",[256,256])
-            return initial_prev_frame
-        else:
-            #define rnd num generator and if statement <0.5 take black or color
-            rnd = np.random.uniform(0,1)
-            if rnd <= 0.5:
-                ### added box parameters ççç
-                prev = load_img(join(self.photo_path,"frame"+str(num)+".jpg"), bbox = self.bbox)
-            else:
-                prev = Image.new("RGB",[256,256])
 
-            return prev
+    #unnused
+    #def get_prev(self, num):
+    #    if not exists(join(self.photo_path,"frame"+str(num)+".jpg")):
+    #        initial_prev_frame = Image.new("RGB",[256,256])
+    #        return initial_prev_frame
+    #    else:
+    #        #define rnd num generator and if statement <0.5 take black or color
+    #        rnd = np.random.uniform(0,1)
+    #        if rnd <= 0.5:
+    #            ### added box parameters ççç
+    #            prev = load_img(join(self.photo_path,"frame"+str(num)+".jpg"), bbox = self.bbox)
+    #        else:
+    #            prev = Image.new("RGB",[256,256])
+    #
+    #        return prev
 
     def set_region(self, bbox):
         self.bbox = bbox
@@ -119,17 +125,13 @@ class DatasetFromFolder(data.Dataset):
         return shuffled_scenes_tmp
 
     def next_scene(self):
-
-        print ("\n\n\n next scene!!!!!")
-
         if ( len(self.shuffled_scenes) == 0):
             #reset the data set, and refresh the scene count
             self.shuffled_scenes = self.random_scene_order(self.image_filenames_tests)
             self.frame_sum = 0
-
-            print ("\n reset frame")
             #also make sure the very first frame remains as out target
             self.prev = load_img(self.shuffled_scenes[0][0], bbox = self.bbox)
+            self.prev
         else:
             #if we need to get a new scene, we need to decrement index by the frames in the scene
             self.frame_sum += len(self.current_scene)

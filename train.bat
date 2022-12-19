@@ -1,2 +1,2 @@
-python train.py --root "D:\Files\FACUL\TCC\TCVC-master\img root" --dataset "c" --logfile "logs.txt" --batchSize 2 --cuda --nEpochs 30 --checkpoint_path_G "D:\Files\FACUL\TCC\TCVC-master\checkpoint\c\" --checkpoint_path_D "D:\Files\FACUL\TCC\TCVC-master\checkpoint\c\"
+python train.py --root "D:/Files/FACUL/TCC/TCVC-master/img root" --dataset "c" --logfile "logs.txt" --batchSize 1 --cuda --nEpochs 50 --checkpoint_path_G "D:/Files/FACUL/TCC/TCVC-master/checkpoint/c/netG_weights_epoch_20.pth" --checkpoint_path_D "D:/Files/FACUL/TCC/TCVC-master/checkpoint/c/netD_weights_epoch_20.pth"
 pause
